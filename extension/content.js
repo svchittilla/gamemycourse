@@ -18,7 +18,10 @@ let trackingData = {
   videoWatchedPercentage: 0,
   videoDuration: 0,
   videoCurrentTime: 0,
-  isVideoPlaying: false // Track if video is currently playing
+  isVideoPlaying: false, // Track if video is currently playing
+  pauseCount: 0, // Track how many times video was paused
+  seekCount: 0, // Track how many times user seeked in video
+  seekPositions: [] // Array of percentages where user seeked to
 };
 
 // Scroll session tracking
@@ -89,15 +92,19 @@ function setupVideoTracking(video) {
   
   video.addEventListener('pause', () => {
     if (video === primaryVideo) {
-      console.log('⏸️ Video paused at:', video.currentTime);
+      trackingData.pauseCount++; // Increment pause counter
+      console.log(`⏸️ Video paused at: ${video.currentTime.toFixed(1)}s (pause #${trackingData.pauseCount})`);
       trackingData.isVideoPlaying = false;
       updateLastActivity();
     }
   });
   
   video.addEventListener('seeked', () => {
-    if (video === primaryVideo) {
-      console.log('⏭️ Video seeked to:', video.currentTime);
+    if (video === primaryVideo && video.duration) {
+      trackingData.seekCount++; // Increment seek counter
+      const seekPercentage = (video.currentTime / video.duration) * 100;
+      trackingData.seekPositions.push(parseFloat(seekPercentage.toFixed(1))); // Store seek position as percentage
+      console.log(`⏭️ Video seeked to: ${video.currentTime.toFixed(1)}s (${seekPercentage.toFixed(1)}%) - seek #${trackingData.seekCount}`);
       updateLastActivity();
     }
   });
@@ -242,6 +249,9 @@ if (window.location.href.includes('youtube.com')) {
       trackingData.videoDuration = 0;
       trackingData.videoCurrentTime = 0;
       trackingData.isVideoPlaying = false;
+      trackingData.pauseCount = 0; // Reset pause counter for new video
+      trackingData.seekCount = 0; // Reset seek counter for new video
+      trackingData.seekPositions = []; // Reset seek positions array for new video
       primaryVideo = null;
       trackedVideos.clear();
       findAndTrackVideos.lastVideoCount = 0; // Reset counter
@@ -453,7 +463,10 @@ function generateEngagementLog() {
       video_watched_percentage: parseFloat(trackingData.videoWatchedPercentage.toFixed(1)),
       video_duration: Math.round(trackingData.videoDuration),
       video_current_time: Math.round(trackingData.videoCurrentTime),
-      is_video_playing: trackingData.isVideoPlaying
+      is_video_playing: trackingData.isVideoPlaying,
+      pause_count: trackingData.pauseCount,
+      seek_count: trackingData.seekCount,
+      seek_positions: trackingData.seekPositions
     }
   };
 }
