@@ -14,7 +14,11 @@ let trackingData = {
   totalScrolls: 0,
   tabSwitches: 0,
   readingTime: 0,
-  tabAwayTime: 0
+  tabAwayTime: 0,
+  videoWatchedPercentage: 0,
+  videoDuration: 0,
+  videoCurrentTime: 0,
+  isVideoPlaying: false // Track if video is currently playing
 };
 
 // Scroll session tracking
@@ -25,8 +29,228 @@ let lastScrollTime = 0;
 // Tab away tracking
 let tabHiddenTime = null;
 let totalTabAwayTime = 0;
+let tabAwayStartTime = null; // For idle time calculation
+
+// Video tracking
+let trackedVideos = new Set();
+let primaryVideo = null;
 
 console.log('Session started:', trackingData.sessionId);
+
+// Video tracking functions - SINGLE DEFINITION
+function setupVideoTracking(video) {
+  if (trackedVideos.has(video)) return; // Already tracking this video
+  
+  trackedVideos.add(video);
+  
+  // Set this as primary video if it's the largest or first one
+  if (!primaryVideo || (video.videoWidth * video.videoHeight > primaryVideo.videoWidth * primaryVideo.videoHeight)) {
+    primaryVideo = video;
+    console.log('📹 Primary video set:', video.src || video.currentSrc || 'embedded video');
+    console.log('📹 Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+  }
+  
+  // Enhanced timeupdate tracking
+  video.addEventListener('timeupdate', () => {
+    if (video === primaryVideo && video.duration) {
+      trackingData.videoCurrentTime = video.currentTime;
+      trackingData.videoDuration = video.duration;
+      trackingData.videoWatchedPercentage = Math.min((video.currentTime / video.duration) * 100, 100);
+      
+      // Log progress every 10% for debugging (prevent spam)
+      const percentage = trackingData.videoWatchedPercentage;
+      const roundedPercentage = Math.floor(percentage / 10) * 10;
+      const prevRoundedPercentage = Math.floor((percentage - 1) / 10) * 10;
+      
+      if (roundedPercentage > prevRoundedPercentage && roundedPercentage > 0) {
+        console.log(`📹 Video progress: ${roundedPercentage}%`);
+      }
+      
+      updateLastActivity();
+    }
+  });
+  
+  // Track when video metadata loads
+  video.addEventListener('loadedmetadata', () => {
+    if (video === primaryVideo) {
+      console.log('📹 Video metadata loaded - Duration:', video.duration, 'seconds');
+      trackingData.videoDuration = video.duration;
+    }
+  });
+  
+  // Track video events
+  video.addEventListener('play', () => {
+    if (video === primaryVideo) {
+      console.log('▶️ Video started playing');
+      trackingData.isVideoPlaying = true;
+      updateLastActivity();
+    }
+  });
+  
+  video.addEventListener('pause', () => {
+    if (video === primaryVideo) {
+      console.log('⏸️ Video paused at:', video.currentTime);
+      trackingData.isVideoPlaying = false;
+      updateLastActivity();
+    }
+  });
+  
+  video.addEventListener('seeked', () => {
+    if (video === primaryVideo) {
+      console.log('⏭️ Video seeked to:', video.currentTime);
+      updateLastActivity();
+    }
+  });
+  
+  video.addEventListener('ended', () => {
+    if (video === primaryVideo) {
+      console.log('🏁 Video ended');
+      trackingData.videoWatchedPercentage = 100;
+      trackingData.isVideoPlaying = false;
+      updateLastActivity();
+    }
+  });
+}
+
+// Enhanced YouTube API tracking - SINGLE DEFINITION
+function setupYouTubeAPITracking(player) {
+  console.log('🎬 Setting up YouTube API tracking');
+  
+  try {
+    const updateYouTubeProgress = () => {
+      try {
+        const currentTime = player.getCurrentTime();
+        const duration = player.getDuration();
+        const playerState = player.getPlayerState();
+        
+        // Update playing state based on YouTube player state
+        trackingData.isVideoPlaying = (playerState === 1); // 1 = playing
+        
+        if (duration > 0) {
+          trackingData.videoCurrentTime = currentTime;
+          trackingData.videoDuration = duration;
+          trackingData.videoWatchedPercentage = Math.min((currentTime / duration) * 100, 100);
+          
+          // Less frequent logging to prevent spam
+          const roundedPercentage = Math.floor(trackingData.videoWatchedPercentage / 10) * 10;
+          if (roundedPercentage > 0 && roundedPercentage % 20 === 0) { // Log every 20%
+            console.log(`🎬 YouTube: ${roundedPercentage}%`);
+          }
+        }
+      } catch (e) {
+        // Fallback to HTML5 video if API fails
+      }
+    };
+    
+    // Update progress every 2 seconds (less frequent)
+    setInterval(updateYouTubeProgress, 2000);
+    
+  } catch (e) {
+    console.log('🎬 YouTube API setup failed:', e.message);
+  }
+}
+
+// Find and track videos on the page - SINGLE DEFINITION
+function findAndTrackVideos() {
+  // Find all video elements
+  const videos = document.querySelectorAll('video');
+  
+  videos.forEach(video => {
+    setupVideoTracking(video);
+  });
+  
+  // Enhanced YouTube detection
+  if (window.location.href.includes('youtube.com/watch')) {
+    // Only log once per page load
+    if (trackedVideos.size === 0) {
+      console.log('🎬 YouTube page detected - searching for video player');
+    }
+    
+    // Multiple selectors for YouTube video element
+    const ytSelectors = [
+      'video.html5-main-video',
+      'video.video-stream',
+      '#movie_player video',
+      '.html5-video-player video',
+      'video[src*="youtube"]',
+      'video'
+    ];
+    
+    let ytVideo = null;
+    for (const selector of ytSelectors) {
+      ytVideo = document.querySelector(selector);
+      if (ytVideo) {
+        if (trackedVideos.size === 0) { // Only log once
+          console.log(`🎬 YouTube video found with selector: ${selector}`);
+        }
+        break;
+      }
+    }
+    
+    if (ytVideo) {
+      setupVideoTracking(ytVideo);
+      
+      // YouTube API integration if available
+      if (window.YT && window.YT.Player && trackedVideos.size <= 1) {
+        console.log('🎬 YouTube API detected, trying enhanced tracking');
+        try {
+          // Try to get YouTube player instance
+          const playerElement = document.querySelector('#movie_player');
+          if (playerElement && playerElement.getPlayerState) {
+            setupYouTubeAPITracking(playerElement);
+          }
+        } catch (e) {
+          console.log('🎬 YouTube API tracking failed, using HTML5 fallback');
+        }
+      }
+    }
+  }
+  
+  // Only log video count if it changed
+  const currentVideoCount = videos.length;
+  if (!findAndTrackVideos.lastVideoCount || findAndTrackVideos.lastVideoCount !== currentVideoCount) {
+    console.log(`📹 Found ${currentVideoCount} video(s) on page`);
+    findAndTrackVideos.lastVideoCount = currentVideoCount;
+  }
+}
+
+// Initialize video tracking
+setTimeout(() => {
+  findAndTrackVideos();
+  
+  // Re-scan for videos more frequently on YouTube
+  const isYouTube = window.location.href.includes('youtube.com');
+  const scanInterval = isYouTube ? 5000 : 10000; // Every 5s for YouTube, 10s for others (reduced frequency)
+  
+  setInterval(findAndTrackVideos, scanInterval);
+}, 1000); // Wait 1 second for page to load
+
+// YouTube-specific: Listen for navigation changes
+if (window.location.href.includes('youtube.com')) {
+  console.log('🎬 YouTube detected - setting up navigation listeners');
+  
+  // YouTube uses History API for navigation
+  let lastUrl = location.href;
+  new MutationObserver(() => {
+    const currentUrl = location.href;
+    if (currentUrl !== lastUrl) {
+      lastUrl = currentUrl;
+      console.log('🎬 YouTube navigation detected, rescanning for videos');
+      
+      // Reset video tracking data for new video
+      trackingData.videoWatchedPercentage = 0;
+      trackingData.videoDuration = 0;
+      trackingData.videoCurrentTime = 0;
+      trackingData.isVideoPlaying = false;
+      primaryVideo = null;
+      trackedVideos.clear();
+      findAndTrackVideos.lastVideoCount = 0; // Reset counter
+      
+      // Rescan after short delay
+      setTimeout(findAndTrackVideos, 2000);
+    }
+  }).observe(document, { subtree: true, childList: true });
+}
 
 // Activity tracking functions
 function updateLastActivity() {
@@ -53,8 +277,6 @@ function trackScrollDepth() {
     
     scrollTop = scrollContainer.scrollTop || window.pageYOffset || document.documentElement.scrollTop;
     documentHeight = scrollContainer.scrollHeight - scrollContainer.clientHeight;
-    
-    console.log('📓 Jupyter detected - container:', scrollContainer.className, 'scrollTop:', scrollTop, 'height:', documentHeight);
   } else {
     // Regular webpage scroll detection
     scrollTop = window.pageYOffset || document.documentElement.scrollTop;
@@ -68,7 +290,11 @@ function trackScrollDepth() {
     trackingData.scrollDepth = newScrollDepth;
     trackingData.maxScrollDepth = Math.max(trackingData.maxScrollDepth, trackingData.scrollDepth);
     
-    // console.log(`📊 Scroll: ${(newScrollDepth * 100).toFixed(1)}% (${scrollTop}/${documentHeight})`);
+    // Less frequent scroll logging
+    if (Math.abs(newScrollDepth - (trackingData.lastLoggedScrollDepth || 0)) > 0.1) { // Log every 10% change
+      console.log(`📊 Scroll: ${(newScrollDepth * 100).toFixed(1)}%`);
+      trackingData.lastLoggedScrollDepth = newScrollDepth;
+    }
   }
   
   // Scroll session counting logic with adaptive timeout
@@ -133,7 +359,7 @@ document.addEventListener('mousedown', updateLastActivity);
 document.addEventListener('keyup', updateLastActivity);
 window.addEventListener('resize', updateLastActivity);
 
-// Page visibility tracking (tab switching)
+// Page visibility tracking (tab switching) - ENHANCED FOR IDLE TIME
 document.addEventListener('visibilitychange', () => {
   const now = Date.now();
   
@@ -141,6 +367,7 @@ document.addEventListener('visibilitychange', () => {
     console.log('Tab became hidden - user switched away');
     trackingData.tabSwitches++;
     tabHiddenTime = now; // Record when tab became hidden
+    tabAwayStartTime = now; // Start counting idle time from tab switch
   } else {
     console.log('Tab became visible - user returned');
     
@@ -150,34 +377,48 @@ document.addEventListener('visibilitychange', () => {
       totalTabAwayTime += timeAway;
       trackingData.tabAwayTime = Math.round(totalTabAwayTime);
       
-      console.log(`User was away for ${timeAway.toFixed(1)}s. Total away time: ${trackingData.tabAwayTime}s`);
+      // Add tab away time to idle time
+      trackingData.idleTime += timeAway;
+      
+      console.log(`User was away for ${timeAway.toFixed(1)}s. Total away time: ${trackingData.tabAwayTime}s, Total idle: ${trackingData.idleTime.toFixed(1)}s`);
+      
       tabHiddenTime = null; // Reset
+      tabAwayStartTime = null; // Reset
     }
     
     updateLastActivity();
   }
 });
 
-// Calculate idle time and reading time
+// Calculate idle time and reading time - ENHANCED FOR VIDEO PLAYBACK
 function calculateTimes() {
   const now = Date.now();
   const timeSinceLastCheck = now - trackingData.lastIdleCheck;
   const timeSinceActivity = now - trackingData.lastActivity;
   
-  // If user has been inactive for more than 5 minutes (300 seconds), accumulate idle time
-  if (timeSinceActivity > 300000) { // 5 minutes = 300,000 milliseconds
+  // Reduced idle threshold to 20 seconds (20,000 milliseconds)
+  const IDLE_THRESHOLD = 20000; // 20 seconds
+  
+  // If user has been inactive for more than 20 seconds AND video is not playing, accumulate idle time
+  if (timeSinceActivity > IDLE_THRESHOLD && !trackingData.isVideoPlaying) {
     // Add the time since last check as idle time (but only if it was actually idle)
-    const idleTimeToAdd = timeSinceLastCheck / 1000;
+    const idleTimeToAdd = Math.min(timeSinceLastCheck / 1000, timeSinceActivity / 1000);
     trackingData.idleTime += idleTimeToAdd;
-    console.log(`Adding ${idleTimeToAdd.toFixed(1)}s idle time. Total idle: ${trackingData.idleTime.toFixed(1)}s`);
+    console.log(`Adding ${idleTimeToAdd.toFixed(1)}s idle time (video not playing). Total idle: ${trackingData.idleTime.toFixed(1)}s`);
   }
   
-  // If tab is currently hidden, add current away time to total
+  // If tab is currently hidden, add current away time to total AND idle time
   if (tabHiddenTime && document.hidden) {
     const currentAwayTime = (now - tabHiddenTime) / 1000;
     trackingData.tabAwayTime = Math.round(totalTabAwayTime + currentAwayTime);
+    
+    // Add tab away time to idle time continuously
+    const idleTimeFromTabAway = (now - tabAwayStartTime) / 1000;
+    trackingData.idleTime = Math.round(trackingData.idleTime + (idleTimeFromTabAway - (trackingData.idleTimeFromTabAwayLastCheck || 0)));
+    trackingData.idleTimeFromTabAwayLastCheck = idleTimeFromTabAway;
   } else {
     trackingData.tabAwayTime = Math.round(totalTabAwayTime);
+    trackingData.idleTimeFromTabAwayLastCheck = 0;
   }
   
   // Update the last idle check time
@@ -208,7 +449,11 @@ function generateEngagementLog() {
       reading_time: Math.round(trackingData.readingTime),
       total_scrolls: trackingData.totalScrolls,
       tab_switches: trackingData.tabSwitches,
-      tab_away_time: trackingData.tabAwayTime
+      tab_away_time: trackingData.tabAwayTime,
+      video_watched_percentage: parseFloat(trackingData.videoWatchedPercentage.toFixed(1)),
+      video_duration: Math.round(trackingData.videoDuration),
+      video_current_time: Math.round(trackingData.videoCurrentTime),
+      is_video_playing: trackingData.isVideoPlaying
     }
   };
 }
