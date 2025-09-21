@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Gamify Course Tracker",
+  "version": "1.0",
+  "description": "Tracks learner engagement during missions",
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Gamify Tracker",
+    "default_popup": "popup.html"
+  }
+}
