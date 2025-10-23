@@ -129,5 +129,5 @@ def generate_synthetic_sessions(num_samples=10000, video_ratio=0.5, save_csv=Tru
 
 # Example usage
 if __name__ == "__main__":
-    df = generate_synthetic_sessions(num_samples=100000, video_ratio=0.55)
+    df = generate_synthetic_sessions(num_samples=200000, video_ratio=0.55)
     print(df.head(3).to_string())

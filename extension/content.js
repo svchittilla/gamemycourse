@@ -407,7 +407,7 @@ function calculateTimes() {
   const timeSinceActivity = now - trackingData.lastActivity;
   
   // Reduced idle threshold to 20 seconds (20,000 milliseconds)
-  const IDLE_THRESHOLD = 20000; // 20 seconds
+  const IDLE_THRESHOLD = 240000; // 20 seconds
   
   // If user has been inactive for more than 20 seconds AND video is not playing, accumulate idle time
   if (timeSinceActivity > IDLE_THRESHOLD && !trackingData.isVideoPlaying) {
