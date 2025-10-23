@@ -4,7 +4,7 @@ import random
 import json
 
 # -----------------------------
-# 🔹 Synthetic Engagement Data Generator
+# Synthetic Engagement Data Generator
 # -----------------------------
 
 def generate_video_session():
@@ -119,7 +119,7 @@ def generate_synthetic_sessions(num_samples=10000, video_ratio=0.5, save_csv=Tru
     if save_csv:
         filename = "synthetic_engagement_dataset.csv"
         df.to_csv(filename, index=False)
-        print(f"✅ Dataset saved to {filename}")
+        print(f"Dataset saved to {filename}")
         print(f"Shape: {df.shape}")
         print(df["content_type"].value_counts())
         print(df["engagement_level"].describe())
