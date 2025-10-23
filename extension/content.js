@@ -49,8 +49,8 @@ function setupVideoTracking(video) {
   // Set this as primary video if it's the largest or first one
   if (!primaryVideo || (video.videoWidth * video.videoHeight > primaryVideo.videoWidth * primaryVideo.videoHeight)) {
     primaryVideo = video;
-    console.log('📹 Primary video set:', video.src || video.currentSrc || 'embedded video');
-    console.log('📹 Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+    console.log(' Primary video set:', video.src || video.currentSrc || 'embedded video');
+    console.log(' Video dimensions:', video.videoWidth, 'x', video.videoHeight);
   }
   
   // Enhanced timeupdate tracking
@@ -66,7 +66,7 @@ function setupVideoTracking(video) {
       const prevRoundedPercentage = Math.floor((percentage - 1) / 10) * 10;
       
       if (roundedPercentage > prevRoundedPercentage && roundedPercentage > 0) {
-        console.log(`📹 Video progress: ${roundedPercentage}%`);
+        console.log(` Video progress: ${roundedPercentage}%`);
       }
       
       updateLastActivity();
@@ -76,7 +76,7 @@ function setupVideoTracking(video) {
   // Track when video metadata loads
   video.addEventListener('loadedmetadata', () => {
     if (video === primaryVideo) {
-      console.log('📹 Video metadata loaded - Duration:', video.duration, 'seconds');
+      console.log(' Video metadata loaded - Duration:', video.duration, 'seconds');
       trackingData.videoDuration = video.duration;
     }
   });
@@ -84,7 +84,7 @@ function setupVideoTracking(video) {
   // Track video events
   video.addEventListener('play', () => {
     if (video === primaryVideo) {
-      console.log('▶️ Video started playing');
+      console.log(' Video started playing');
       trackingData.isVideoPlaying = true;
       updateLastActivity();
     }
@@ -93,7 +93,7 @@ function setupVideoTracking(video) {
   video.addEventListener('pause', () => {
     if (video === primaryVideo) {
       trackingData.pauseCount++; // Increment pause counter
-      console.log(`⏸️ Video paused at: ${video.currentTime.toFixed(1)}s (pause #${trackingData.pauseCount})`);
+      console.log(` Video paused at: ${video.currentTime.toFixed(1)}s (pause #${trackingData.pauseCount})`);
       trackingData.isVideoPlaying = false;
       updateLastActivity();
     }
@@ -104,14 +104,14 @@ function setupVideoTracking(video) {
       trackingData.seekCount++; // Increment seek counter
       const seekPercentage = (video.currentTime / video.duration) * 100;
       trackingData.seekPositions.push(parseFloat(seekPercentage.toFixed(1))); // Store seek position as percentage
-      console.log(`⏭️ Video seeked to: ${video.currentTime.toFixed(1)}s (${seekPercentage.toFixed(1)}%) - seek #${trackingData.seekCount}`);
+      console.log(` Video seeked to: ${video.currentTime.toFixed(1)}s (${seekPercentage.toFixed(1)}%) - seek #${trackingData.seekCount}`);
       updateLastActivity();
     }
   });
   
   video.addEventListener('ended', () => {
     if (video === primaryVideo) {
-      console.log('🏁 Video ended');
+      console.log(' Video ended');
       trackingData.videoWatchedPercentage = 100;
       trackingData.isVideoPlaying = false;
       updateLastActivity();
@@ -121,7 +121,7 @@ function setupVideoTracking(video) {
 
 // Enhanced YouTube API tracking - SINGLE DEFINITION
 function setupYouTubeAPITracking(player) {
-  console.log('🎬 Setting up YouTube API tracking');
+  console.log(' Setting up YouTube API tracking');
   
   try {
     const updateYouTubeProgress = () => {
@@ -141,7 +141,7 @@ function setupYouTubeAPITracking(player) {
           // Less frequent logging to prevent spam
           const roundedPercentage = Math.floor(trackingData.videoWatchedPercentage / 10) * 10;
           if (roundedPercentage > 0 && roundedPercentage % 20 === 0) { // Log every 20%
-            console.log(`🎬 YouTube: ${roundedPercentage}%`);
+            console.log(` YouTube: ${roundedPercentage}%`);
           }
         }
       } catch (e) {
@@ -153,7 +153,7 @@ function setupYouTubeAPITracking(player) {
     setInterval(updateYouTubeProgress, 2000);
     
   } catch (e) {
-    console.log('🎬 YouTube API setup failed:', e.message);
+    console.log(' YouTube API setup failed:', e.message);
   }
 }
 
@@ -170,7 +170,7 @@ function findAndTrackVideos() {
   if (window.location.href.includes('youtube.com/watch')) {
     // Only log once per page load
     if (trackedVideos.size === 0) {
-      console.log('🎬 YouTube page detected - searching for video player');
+      console.log(' YouTube page detected - searching for video player');
     }
     
     // Multiple selectors for YouTube video element
@@ -188,7 +188,7 @@ function findAndTrackVideos() {
       ytVideo = document.querySelector(selector);
       if (ytVideo) {
         if (trackedVideos.size === 0) { // Only log once
-          console.log(`🎬 YouTube video found with selector: ${selector}`);
+          console.log(` YouTube video found with selector: ${selector}`);
         }
         break;
       }
@@ -199,7 +199,7 @@ function findAndTrackVideos() {
       
       // YouTube API integration if available
       if (window.YT && window.YT.Player && trackedVideos.size <= 1) {
-        console.log('🎬 YouTube API detected, trying enhanced tracking');
+        console.log(' YouTube API detected, trying enhanced tracking');
         try {
           // Try to get YouTube player instance
           const playerElement = document.querySelector('#movie_player');
@@ -207,7 +207,7 @@ function findAndTrackVideos() {
             setupYouTubeAPITracking(playerElement);
           }
         } catch (e) {
-          console.log('🎬 YouTube API tracking failed, using HTML5 fallback');
+          console.log(' YouTube API tracking failed, using HTML5 fallback');
         }
       }
     }
@@ -216,7 +216,7 @@ function findAndTrackVideos() {
   // Only log video count if it changed
   const currentVideoCount = videos.length;
   if (!findAndTrackVideos.lastVideoCount || findAndTrackVideos.lastVideoCount !== currentVideoCount) {
-    console.log(`📹 Found ${currentVideoCount} video(s) on page`);
+    console.log(` Found ${currentVideoCount} video(s) on page`);
     findAndTrackVideos.lastVideoCount = currentVideoCount;
   }
 }
@@ -234,7 +234,7 @@ setTimeout(() => {
 
 // YouTube-specific: Listen for navigation changes
 if (window.location.href.includes('youtube.com')) {
-  console.log('🎬 YouTube detected - setting up navigation listeners');
+  console.log(' YouTube detected - setting up navigation listeners');
   
   // YouTube uses History API for navigation
   let lastUrl = location.href;
@@ -242,7 +242,7 @@ if (window.location.href.includes('youtube.com')) {
     const currentUrl = location.href;
     if (currentUrl !== lastUrl) {
       lastUrl = currentUrl;
-      console.log('🎬 YouTube navigation detected, rescanning for videos');
+      console.log(' YouTube navigation detected, rescanning for videos');
       
       // Reset video tracking data for new video
       trackingData.videoWatchedPercentage = 0;
@@ -302,7 +302,7 @@ function trackScrollDepth() {
     
     // Less frequent scroll logging
     if (Math.abs(newScrollDepth - (trackingData.lastLoggedScrollDepth || 0)) > 0.1) { // Log every 10% change
-      console.log(`📊 Scroll: ${(newScrollDepth * 100).toFixed(1)}%`);
+      console.log(` Scroll: ${(newScrollDepth * 100).toFixed(1)}%`);
       trackingData.lastLoggedScrollDepth = newScrollDepth;
     }
   }
@@ -312,7 +312,7 @@ function trackScrollDepth() {
     // Start of a new scroll session
     isCurrentlyScrolling = true;
     trackingData.totalScrolls++;
-    console.log(`🖱️ Scroll session #${trackingData.totalScrolls} started`);
+    console.log(` Scroll session #${trackingData.totalScrolls} started`);
   }
   
   // Clear existing timeout and set a new one
@@ -325,7 +325,7 @@ function trackScrollDepth() {
   scrollTimeout = setTimeout(() => {
     // Scroll session ended
     isCurrentlyScrolling = false;
-    console.log(`🖱️ Scroll session #${trackingData.totalScrolls} ended`);
+    console.log(` Scroll session #${trackingData.totalScrolls} ended`);
   }, timeoutDuration);
   
   lastScrollTime = currentTime;
@@ -358,7 +358,7 @@ setTimeout(() => {
   scrollableContainers.forEach(selector => {
     const container = document.querySelector(selector);
     if (container) {
-      console.log(`📓 Found scrollable container: ${selector}`);
+      console.log(` Found scrollable container: ${selector}`);
       container.addEventListener('scroll', trackScrollDepth, { passive: true });
     }
   });
@@ -503,18 +503,16 @@ function detectContentType() {
 
 // Send data to backend (placeholder for now)
 function sendDataToBackend(data) {
-  console.log('📊 Engagement Data:', data);
-  
-  // TODO: Replace with your actual backend endpoint
-  /*
-  fetch('https://your-backend.com/api/engagement', {
+  fetch('http://127.0.0.1:8000/events/ingest', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data)
-  }).catch(error => console.error('Failed to send data:', error));
-  */
+  })
+  .then(response => response.json())
+  .then(result => console.log(' Engagement sent:', result))
+  .catch(error => console.error(' Failed to send data:', error));
 }
 
 // Main tracking loop - runs every 10 seconds
@@ -523,19 +521,39 @@ setInterval(() => {
   
   // Only send data if we're not on a local file
   if (engagementData) {
-    sendDataToBackend(engagementData);
+    console.log('Engagement data (local log only):', engagementData);
   }
 }, 10000); // Send data every 10 seconds
 
 // Send final data when page is about to unload
-window.addEventListener('beforeunload', () => {
-  const finalData = generateEngagementLog();
-  
-  if (finalData) {
-    console.log('📤 Final engagement data:', finalData);
-    // Use sendBeacon for reliable data sending on page unload
-    // navigator.sendBeacon('https://your-backend.com/api/engagement', JSON.stringify(finalData));
-  }
-});
+window.addEventListener('beforeunload', () => {});
 
-console.log('✅ Engagement tracking active - data will be logged every 10 seconds');
+console.log(' Engagement tracking active - data will be logged every 10 seconds');
+
+
+window.getFinalEngagementLog = () => generateEngagementLog();
+
+window.resetTrackingData = () => {
+  trackingData = {
+    sessionId: 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    url: window.location.href,
+    startTime: Date.now(),
+    lastActivity: Date.now(),
+    lastIdleCheck: Date.now(),
+    idleTime: 0,
+    scrollDepth: 0,
+    maxScrollDepth: 0,
+    totalScrolls: 0,
+    tabSwitches: 0,
+    readingTime: 0,
+    tabAwayTime: 0,
+    videoWatchedPercentage: 0,
+    videoDuration: 0,
+    videoCurrentTime: 0,
+    isVideoPlaying: false,
+    pauseCount: 0,
+    seekCount: 0,
+    seekPositions: []
+  };
+  console.log('Tracking reset:', trackingData.sessionId);
+};
